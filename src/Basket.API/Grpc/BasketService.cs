@@ -1,33 +1,28 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
 using eShop.Basket.API.Repositories;
 using eShop.Basket.API.Extensions;
 using eShop.Basket.API.Model;
-using OpenTelemetry.Trace;
-
 namespace eShop.Basket.API.Grpc;
 
 public class BasketService(
     IBasketRepository repository,
     ILogger<BasketService> logger) : Basket.BasketBase
 {
-    private readonly ActivitySource activitySource = new("BasketService");
-    private static readonly Meter meter = new Meter("Basket.API", "1.0.0");
-    private static readonly Counter<int> itemsAddedCounter = meter.CreateCounter<int>("basket_items_added", "items", "Number of items added to the basket");
+
+    private static readonly ActivitySource activitySource = new("Basket.API");
 
     [AllowAnonymous]
     public override async Task<CustomerBasketResponse> GetBasket(GetBasketRequest request, ServerCallContext context)
     {
         using var activity = activitySource.StartActivity("GetBasket");
+        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
         {
-            activity?.SetStatus(ActivityStatusCode.Error, "User not authenticated");
             return new();
         }
-
-        activity?.SetTag("basket.user_id", userId);
 
         if (logger.IsEnabled(LogLevel.Debug))
         {
@@ -41,17 +36,17 @@ public class BasketService(
             return MapToCustomerBasketResponse(data);
         }
 
-        activity?.SetStatus(ActivityStatusCode.Error, "Basket not found");
         return new();
     }
 
     public override async Task<CustomerBasketResponse> UpdateBasket(UpdateBasketRequest request, ServerCallContext context)
     {
         using var activity = activitySource.StartActivity("UpdateBasket");
+        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
         {
-            activity?.SetStatus(ActivityStatusCode.Error, "User not authenticated");
             ThrowNotAuthenticated();
         }
 
@@ -67,14 +62,14 @@ public class BasketService(
             ThrowBasketDoesNotExist(userId);
         }
 
-        // Increment the counter when an item is added to the basket
-        itemsAddedCounter.Add(customerBasket.Items.Count);
-
         return MapToCustomerBasketResponse(response);
     }
 
     public override async Task<DeleteBasketResponse> DeleteBasket(DeleteBasketRequest request, ServerCallContext context)
     {
+        using var activity = activitySource.StartActivity("DeleteBasket");
+        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
         {
