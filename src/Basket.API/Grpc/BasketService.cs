@@ -1,22 +1,35 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
 using eShop.Basket.API.Repositories;
 using eShop.Basket.API.Extensions;
 using eShop.Basket.API.Model;
+using Grpc.Core;
+using Microsoft.Extensions.Logging;
+
 namespace eShop.Basket.API.Grpc;
 
-public class BasketService(
-    IBasketRepository repository,
-    ILogger<BasketService> logger) : Basket.BasketBase
+public class BasketService : Basket.BasketBase
 {
+    private static readonly Meter Meter = new Meter("eShop.Basket.API", "1.0.0");
+    private static readonly Counter<int> GetBasketCounter = Meter.CreateCounter<int>("get_basket_requests");
+    private static readonly Counter<int> UpdateBasketCounter = Meter.CreateCounter<int>("update_basket_requests");
+    private static readonly Counter<int> DeleteBasketCounter = Meter.CreateCounter<int>("delete_basket_requests");
 
-    private static readonly ActivitySource activitySource = new("Basket.API");
+
+
+    private readonly IBasketRepository repository;
+    private readonly ILogger<BasketService> logger;
+
+    public BasketService(IBasketRepository repository, ILogger<BasketService> logger)
+    {
+        this.repository = repository;
+        this.logger = logger;
+    }
 
     [AllowAnonymous]
     public override async Task<CustomerBasketResponse> GetBasket(GetBasketRequest request, ServerCallContext context)
     {
-        using var activity = activitySource.StartActivity("GetBasket");
-        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+        GetBasketCounter.Add(1);
 
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
@@ -41,8 +54,7 @@ public class BasketService(
 
     public override async Task<CustomerBasketResponse> UpdateBasket(UpdateBasketRequest request, ServerCallContext context)
     {
-        using var activity = activitySource.StartActivity("UpdateBasket");
-        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+        UpdateBasketCounter.Add(1);
 
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
@@ -67,8 +79,7 @@ public class BasketService(
 
     public override async Task<DeleteBasketResponse> DeleteBasket(DeleteBasketRequest request, ServerCallContext context)
     {
-        using var activity = activitySource.StartActivity("DeleteBasket");
-        activity?.SetTag("basket.user_id", context.GetUserIdentity());
+        DeleteBasketCounter.Add(1);
 
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))

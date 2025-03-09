@@ -1,37 +1,33 @@
-﻿using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
+﻿using System.Diagnostics.Metrics;
 using OpenTelemetry.Metrics;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Exporter.Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
-var serviceName = "Basket.API";
 
 builder.AddBasicServiceDefaults();
 builder.AddApplicationServices();
 
+// config openTelemetry
+builder.Services.AddOpenTelemetry().WithMetrics(
+    metrics =>
+    {
+        metrics.AddHttpClientInstrumentation();
+        metrics.AddAspNetCoreInstrumentation();
+        metrics.AddMeter("eShop.Basket.API", "1.0.0");
+        metrics.AddOtlpExporter(
+            options =>
+            {
+                options.Endpoint = new Uri("http://localhost:4317");
+            }
+        );
+    });
+
+
+
 builder.Services.AddGrpc();
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(serviceName))
-    .WithTracing(tracerProviderBuilder => tracerProviderBuilder
-        .AddAspNetCoreInstrumentation()
-        .AddGrpcClientInstrumentation()
-        .AddHttpClientInstrumentation()
-        .AddSqlClientInstrumentation()
-        .AddSource(serviceName)
-        .AddOtlpExporter(opt =>
-        {
-            opt.Endpoint = new Uri("http://localhost:4317");
-            opt.Protocol = OtlpExportProtocol.Grpc;
-        }))
-    .WithMetrics(metricsProviderBuilder => metricsProviderBuilder
-        .AddAspNetCoreInstrumentation()
-        .AddConsoleExporter()
-    );
-
 var app = builder.Build();
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.MapDefaultEndpoints();
 
