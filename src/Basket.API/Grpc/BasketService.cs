@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using eShop.Basket.API.Repositories;
 using eShop.Basket.API.Extensions;
@@ -15,7 +16,7 @@ public class BasketService : Basket.BasketBase
     private static readonly Counter<int> UpdateBasketCounter = Meter.CreateCounter<int>("update_basket_requests");
     private static readonly Counter<int> DeleteBasketCounter = Meter.CreateCounter<int>("delete_basket_requests");
 
-
+    private static readonly ActivitySource activitySource = new("BasketService");
 
     private readonly IBasketRepository repository;
     private readonly ILogger<BasketService> logger;
@@ -31,7 +32,12 @@ public class BasketService : Basket.BasketBase
     {
         GetBasketCounter.Add(1);
 
+
         var userId = context.GetUserIdentity();
+
+        using var activity = activitySource.StartActivity("GetBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", userId);
+
         if (string.IsNullOrEmpty(userId))
         {
             return new();
@@ -57,6 +63,10 @@ public class BasketService : Basket.BasketBase
         UpdateBasketCounter.Add(1);
 
         var userId = context.GetUserIdentity();
+        
+        using var activity = activitySource.StartActivity("UpdateBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", userId);
+        
         if (string.IsNullOrEmpty(userId))
         {
             ThrowNotAuthenticated();
@@ -82,6 +92,10 @@ public class BasketService : Basket.BasketBase
         DeleteBasketCounter.Add(1);
 
         var userId = context.GetUserIdentity();
+        
+        using var activity = activitySource.StartActivity("DeleteBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", userId);
+        
         if (string.IsNullOrEmpty(userId))
         {
             ThrowNotAuthenticated();

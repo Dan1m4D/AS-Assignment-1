@@ -12,8 +12,8 @@ services:
       - 8888:8888 # Prometheus metrics exposed by the Collector
       - 8889:8889 # Prometheus exporter metrics
       - 13133:13133 # health_check extension
-      - 4317:4317 # OTLP gRPC receiver
-      - 4318:4318 # OTLP http receiver
+      - 4316:4316 # OTLP gRPC receiver
+      - 4315:4315 # OTLP http receiver
       - 55679:55679 # zpages extension
     depends_on:
       - prometheus  
@@ -35,6 +35,15 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana-storage:/var/lib/grafana
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+
 
 volumes:
   grafana-storage:

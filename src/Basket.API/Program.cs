@@ -1,5 +1,8 @@
-﻿using System.Diagnostics.Metrics;
-using OpenTelemetry.Metrics;
+﻿using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Exporter;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,10 +19,26 @@ builder.Services.AddOpenTelemetry().WithMetrics(
         metrics.AddOtlpExporter(
             options =>
             {
-                options.Endpoint = new Uri("http://localhost:4317");
+                options.Endpoint = new Uri("http://localhost:4316");
             }
         );
-    });
+    })
+    .WithTracing(
+        (tracing) =>
+        {
+            tracing.AddSource("BasketService");
+            tracing.AddAspNetCoreInstrumentation();
+            tracing.AddHttpClientInstrumentation();
+            tracing.AddGrpcClientInstrumentation();
+            tracing.AddOtlpExporter(
+                options =>
+                {
+                    options.Endpoint = new Uri("http://localhost:4317");
+                    options.Protocol = OtlpExportProtocol.Grpc;
+                }
+            );
+        }
+    );
 
 
 
