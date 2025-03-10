@@ -6,6 +6,9 @@ using OpenTelemetry.Exporter;
 
 var builder = WebApplication.CreateBuilder(args);
 
+const string serviceName = "eShop.Basket.API";
+const string serviceVersion = "1.0.0";
+
 builder.AddBasicServiceDefaults();
 builder.AddApplicationServices();
 
@@ -15,7 +18,7 @@ builder.Services.AddOpenTelemetry().WithMetrics(
     {
         metrics.AddHttpClientInstrumentation();
         metrics.AddAspNetCoreInstrumentation();
-        metrics.AddMeter("eShop.Basket.API", "1.0.0");
+        metrics.AddMeter(serviceName, serviceVersion);
         metrics.AddOtlpExporter(
             options =>
             {
@@ -26,7 +29,7 @@ builder.Services.AddOpenTelemetry().WithMetrics(
     .WithTracing(
         (tracing) =>
         {
-            tracing.AddSource("BasketService");
+            tracing.AddSource(serviceName);
             tracing.AddAspNetCoreInstrumentation();
             tracing.AddHttpClientInstrumentation();
             tracing.AddGrpcClientInstrumentation();

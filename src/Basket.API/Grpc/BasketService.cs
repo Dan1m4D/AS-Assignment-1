@@ -15,8 +15,9 @@ public class BasketService : Basket.BasketBase
     private static readonly Counter<int> GetBasketCounter = Meter.CreateCounter<int>("get_basket_requests");
     private static readonly Counter<int> UpdateBasketCounter = Meter.CreateCounter<int>("update_basket_requests");
     private static readonly Counter<int> DeleteBasketCounter = Meter.CreateCounter<int>("delete_basket_requests");
+    private static readonly Histogram<double> RequestDurationHistogram = Meter.CreateHistogram<double>("request_duration", "ms", "Duration of requests in milliseconds");
 
-    private static readonly ActivitySource activitySource = new("BasketService");
+    private static readonly ActivitySource ActivitySource = new ActivitySource("eShop.Basket.API");
 
     private readonly IBasketRepository repository;
     private readonly ILogger<BasketService> logger;
@@ -32,14 +33,16 @@ public class BasketService : Basket.BasketBase
     {
         GetBasketCounter.Add(1);
 
+        using var activity = ActivitySource.StartActivity("GetBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("request.method", context.Method);
+
+        var stopwatch = Stopwatch.StartNew();
 
         var userId = context.GetUserIdentity();
-
-        using var activity = activitySource.StartActivity("GetBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", userId);
-
         if (string.IsNullOrEmpty(userId))
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "User ID is null or empty");
             return new();
         }
 
@@ -50,11 +53,16 @@ public class BasketService : Basket.BasketBase
 
         var data = await repository.GetBasketAsync(userId);
 
+        stopwatch.Stop();
+        RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "GetBasket"));
+
         if (data is not null)
         {
+            activity?.SetStatus(ActivityStatusCode.Ok, "Basket retrieved successfully");
             return MapToCustomerBasketResponse(data);
         }
 
+        activity?.SetStatus(ActivityStatusCode.Error, "Basket not found");
         return new();
     }
 
@@ -62,13 +70,16 @@ public class BasketService : Basket.BasketBase
     {
         UpdateBasketCounter.Add(1);
 
+        using var activity = ActivitySource.StartActivity("UpdateBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("request.method", context.Method);
+
+        var stopwatch = Stopwatch.StartNew();
+
         var userId = context.GetUserIdentity();
-        
-        using var activity = activitySource.StartActivity("UpdateBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", userId);
-        
         if (string.IsNullOrEmpty(userId))
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "User ID is null or empty");
             ThrowNotAuthenticated();
         }
 
@@ -79,11 +90,17 @@ public class BasketService : Basket.BasketBase
 
         var customerBasket = MapToCustomerBasket(userId, request);
         var response = await repository.UpdateBasketAsync(customerBasket);
+
+        stopwatch.Stop();
+        RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "UpdateBasket"));
+
         if (response is null)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Basket not found");
             ThrowBasketDoesNotExist(userId);
         }
 
+        activity?.SetStatus(ActivityStatusCode.Ok, "Basket updated successfully");
         return MapToCustomerBasketResponse(response);
     }
 
@@ -91,17 +108,25 @@ public class BasketService : Basket.BasketBase
     {
         DeleteBasketCounter.Add(1);
 
+        using var activity = ActivitySource.StartActivity("DeleteBasket", ActivityKind.Server);
+        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("request.method", context.Method);
+
+        var stopwatch = Stopwatch.StartNew();
+
         var userId = context.GetUserIdentity();
-        
-        using var activity = activitySource.StartActivity("DeleteBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", userId);
-        
         if (string.IsNullOrEmpty(userId))
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "User ID is null or empty");
             ThrowNotAuthenticated();
         }
 
         await repository.DeleteBasketAsync(userId);
+
+        stopwatch.Stop();
+        RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "DeleteBasket"));
+
+        activity?.SetStatus(ActivityStatusCode.Ok, "Basket deleted successfully");
         return new();
     }
 
