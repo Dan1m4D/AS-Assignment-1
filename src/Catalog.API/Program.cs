@@ -45,6 +45,7 @@ builder.Services.AddOpenTelemetry().WithMetrics(
         }
     );
 
+builder.Services.AddGrpc();
 
 var withApiVersioning = builder.Services.AddApiVersioning();
 

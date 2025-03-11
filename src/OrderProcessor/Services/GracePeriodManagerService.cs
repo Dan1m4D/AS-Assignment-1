@@ -1,4 +1,6 @@
-﻿using eShop.EventBus.Abstractions;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using eShop.EventBus.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using eShop.OrderProcessor.Events;
@@ -11,6 +13,12 @@ namespace eShop.OrderProcessor.Services
         ILogger<GracePeriodManagerService> logger,
         NpgsqlDataSource dataSource) : BackgroundService
     {
+        private static readonly Meter Meter = new Meter("eShop.OrderProcessor.Services.GracePeriodManagerService", "1.0.0");
+        private static readonly Counter<int> CheckOrdersCounter = Meter.CreateCounter<int>("check_orders_requests");
+        private static readonly Histogram<double> RequestDurationHistogram = Meter.CreateHistogram<double>("request_duration", "ms", "Duration of requests in milliseconds");
+
+        private static readonly ActivitySource ActivitySource = new ActivitySource("eShop.OrderProcessor.Services.GracePeriodManagerService");
+
         private readonly BackgroundTaskOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,6 +51,13 @@ namespace eShop.OrderProcessor.Services
 
         private async Task CheckConfirmedGracePeriodOrders()
         {
+            CheckOrdersCounter.Add(1);
+
+            using var activity = ActivitySource.StartActivity("CheckConfirmedGracePeriodOrders", ActivityKind.Internal);
+            activity?.SetTag("method", "CheckConfirmedGracePeriodOrders");
+
+            var stopwatch = Stopwatch.StartNew();
+
             if (logger.IsEnabled(LogLevel.Debug))
             {
                 logger.LogDebug("Checking confirmed grace period orders");
@@ -58,10 +73,20 @@ namespace eShop.OrderProcessor.Services
 
                 await eventBus.PublishAsync(confirmGracePeriodEvent);
             }
+
+            stopwatch.Stop();
+            RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "CheckConfirmedGracePeriodOrders"));
+
+            activity?.SetStatus(ActivityStatusCode.Ok, "Grace period orders checked successfully");
         }
 
         private async ValueTask<List<int>> GetConfirmedGracePeriodOrders()
         {
+            using var activity = ActivitySource.StartActivity("GetConfirmedGracePeriodOrders", ActivityKind.Internal);
+            activity?.SetTag("method", "GetConfirmedGracePeriodOrders");
+
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 using var conn = dataSource.CreateConnection();
@@ -73,7 +98,7 @@ namespace eShop.OrderProcessor.Services
                     """;
                 command.Parameters.AddWithValue("GracePeriodTime", TimeSpan.FromMinutes(_options.GracePeriodTime));
 
-                List<int> ids = [];
+                List<int> ids = new();
 
                 await conn.OpenAsync();
                 using var reader = await command.ExecuteReaderAsync();
@@ -82,14 +107,21 @@ namespace eShop.OrderProcessor.Services
                     ids.Add(reader.GetInt32(0));
                 }
 
+                stopwatch.Stop();
+                RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "GetConfirmedGracePeriodOrders"));
+
+                activity?.SetStatus(ActivityStatusCode.Ok, "Confirmed grace period orders retrieved successfully");
                 return ids;
             }
             catch (NpgsqlException exception)
             {
-                logger.LogError(exception, "Fatal error establishing database connection");
-            }
+                stopwatch.Stop();
+                RequestDurationHistogram.Record(stopwatch.ElapsedMilliseconds, new KeyValuePair<string, object>("method", "GetConfirmedGracePeriodOrders"));
 
-            return [];
+                activity?.SetStatus(ActivityStatusCode.Error, $"Failed to retrieve confirmed grace period orders: {exception.Message}");
+                logger.LogError(exception, "Fatal error establishing database connection");
+                return new List<int>();
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ services:
     container_name: otel-collector
     image: otel/opentelemetry-collector-contrib
     volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      - ./observability/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml
     ports:
       - 1888:1888 # pprof extension
       - 8888:8888 # Prometheus metrics exposed by the Collector
@@ -22,7 +22,7 @@ services:
     container_name: prometheus
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
@@ -34,7 +34,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana-storage:/var/lib/grafana
+      - ./observability/grafana/provisioning:/var/lib/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -43,7 +44,3 @@ services:
       - "16686:16686" # Jaeger UI
       - "4317:4317"  # OTLP gRPC
       - "4318:4318"  # OTLP HTTP
-
-
-volumes:
-  grafana-storage:

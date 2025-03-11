@@ -33,6 +33,7 @@ builder.Services.AddOpenTelemetry().WithMetrics(
         (tracing) =>
         {
             tracing.AddSource(serviceName);
+            tracing.AddProcessor(new MaskProcessor());
             tracing.AddAspNetCoreInstrumentation();
             tracing.AddHttpClientInstrumentation();
             tracing.AddGrpcClientInstrumentation();
@@ -49,6 +50,8 @@ builder.Services.AddOpenTelemetry().WithMetrics(
 builder.AddDefaultOpenApi(withApiVersioning);
 
 var app = builder.Build();
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.MapDefaultEndpoints();
 

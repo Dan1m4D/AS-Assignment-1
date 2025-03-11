@@ -42,7 +42,7 @@ public static class OrdersApi
 
         using var activity = ActivitySource.StartActivity("CancelOrder", ActivityKind.Server);
         activity?.SetTag("request.requestId", requestId);
-        activity?.SetTag("request.command", command);
+        activity?.SetTag("request.command.orderNumber", command.OrderNumber);
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -85,7 +85,7 @@ public static class OrdersApi
 
         using var activity = ActivitySource.StartActivity("ShipOrder", ActivityKind.Server);
         activity?.SetTag("request.requestId", requestId);
-        activity?.SetTag("request.command", command);
+        activity?.SetTag("request.command.orderNumber", command.OrderNumber);
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -185,7 +185,8 @@ public static class OrdersApi
         CreateOrderDraftCounter.Add(1);
 
         using var activity = ActivitySource.StartActivity("CreateOrderDraft", ActivityKind.Server);
-        activity?.SetTag("request.command", command);
+        activity?.SetTag("request.command.buyerId", command.BuyerId);
+        activity?.SetTag("request.command.items", command.Items);
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -214,7 +215,20 @@ public static class OrdersApi
 
         using var activity = ActivitySource.StartActivity("CreateOrder", ActivityKind.Server);
         activity?.SetTag("request.requestId", requestId);
-        activity?.SetTag("request.command", request);
+        activity?.SetTag("request.command.userId", request.UserId);
+        activity?.SetTag("request.command.userName", request.UserName);
+        activity?.SetTag("request.command.city", request.City);
+        activity?.SetTag("request.command.street", request.Street);
+        activity?.SetTag("request.command.state", request.State);
+        activity?.SetTag("request.command.country", request.Country);
+        activity?.SetTag("request.command.zipCode", request.ZipCode);
+        activity?.SetTag("request.command.cardNumber", request.CardNumber);
+        activity?.SetTag("request.command.cardHolderName", request.CardHolderName);
+        activity?.SetTag("request.command.cardExpiration", request.CardExpiration);
+        activity?.SetTag("request.command.cardSecurityNumber", request.CardSecurityNumber);
+        activity?.SetTag("request.command.cardTypeId", request.CardTypeId);
+        activity?.SetTag("request.command.buyer", request.Buyer);
+        activity?.SetTag("request.command.items", request.Items);
 
         var stopwatch = Stopwatch.StartNew();
 

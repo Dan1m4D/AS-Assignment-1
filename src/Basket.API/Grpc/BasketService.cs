@@ -34,7 +34,7 @@ public class BasketService : Basket.BasketBase
         GetBasketCounter.Add(1);
 
         using var activity = ActivitySource.StartActivity("GetBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("user.id", context.GetUserIdentity());
         activity?.SetTag("request.method", context.Method);
 
         var stopwatch = Stopwatch.StartNew();
@@ -71,7 +71,7 @@ public class BasketService : Basket.BasketBase
         UpdateBasketCounter.Add(1);
 
         using var activity = ActivitySource.StartActivity("UpdateBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("user.id", context.GetUserIdentity());
         activity?.SetTag("request.method", context.Method);
 
         var stopwatch = Stopwatch.StartNew();
@@ -109,7 +109,7 @@ public class BasketService : Basket.BasketBase
         DeleteBasketCounter.Add(1);
 
         using var activity = ActivitySource.StartActivity("DeleteBasket", ActivityKind.Server);
-        activity?.SetTag("request.userId", context.GetUserIdentity());
+        activity?.SetTag("user.id", context.GetUserIdentity());
         activity?.SetTag("request.method", context.Method);
 
         var stopwatch = Stopwatch.StartNew();

@@ -1,20 +1,63 @@
-﻿namespace eShop.WebApp.Services;
+﻿using System.Diagnostics;
+using System.Net.Http.Json;
 
-public class OrderingService(HttpClient httpClient)
+namespace eShop.WebApp.Services;
+
+public class OrderingService
 {
+    private static readonly ActivitySource ActivitySource = new ActivitySource("eShop.WebApp.Services.OrderingService");
+
+    private readonly HttpClient httpClient;
     private readonly string remoteServiceBaseUrl = "/api/Orders/";
 
-    public Task<OrderRecord[]> GetOrders()
+    public OrderingService(HttpClient httpClient)
     {
-        return httpClient.GetFromJsonAsync<OrderRecord[]>(remoteServiceBaseUrl)!;
+        this.httpClient = httpClient;
     }
 
-    public Task CreateOrder(CreateOrderRequest request, Guid requestId)
+    public async Task<OrderRecord[]> GetOrders()
     {
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, remoteServiceBaseUrl);
-        requestMessage.Headers.Add("x-requestid", requestId.ToString());
-        requestMessage.Content = JsonContent.Create(request);
-        return httpClient.SendAsync(requestMessage);
+        using var activity = ActivitySource.StartActivity("GetOrders", ActivityKind.Client);
+        activity?.SetTag("http.method", HttpMethod.Get.Method);
+        activity?.SetTag("http.url", remoteServiceBaseUrl);
+
+        try
+        {
+            var orders = await httpClient.GetFromJsonAsync<OrderRecord[]>(remoteServiceBaseUrl);
+            activity?.SetStatus(ActivityStatusCode.Ok, "Orders retrieved successfully");
+            return orders!;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, $"Failed to retrieve orders: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task CreateOrder(CreateOrderRequest request, Guid requestId)
+    {
+        using var activity = ActivitySource.StartActivity("CreateOrder", ActivityKind.Client);
+        activity?.SetTag("http.method", HttpMethod.Post.Method);
+        activity?.SetTag("http.url", remoteServiceBaseUrl);
+        activity?.SetTag("request.requestId", requestId);
+        activity?.SetTag("request.body", request);
+
+        try
+        {
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, remoteServiceBaseUrl);
+            requestMessage.Headers.Add("x-requestid", requestId.ToString());
+            requestMessage.Content = JsonContent.Create(request);
+
+            var response = await httpClient.SendAsync(requestMessage);
+            response.EnsureSuccessStatusCode();
+
+            activity?.SetStatus(ActivityStatusCode.Ok, "Order created successfully");
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, $"Failed to create order: {ex.Message}");
+            throw;
+        }
     }
 }
 

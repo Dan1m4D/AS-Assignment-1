@@ -3,7 +3,6 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Exporter;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 const string serviceName = "eShop.Basket.API";
@@ -30,6 +29,7 @@ builder.Services.AddOpenTelemetry().WithMetrics(
         (tracing) =>
         {
             tracing.AddSource(serviceName);
+            tracing.AddProcessor(new MaskProcessor());
             tracing.AddAspNetCoreInstrumentation();
             tracing.AddHttpClientInstrumentation();
             tracing.AddGrpcClientInstrumentation();
