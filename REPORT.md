@@ -6,10 +6,6 @@ _Assignment 02.02_
 ---
 
 ## Table of Contents
-
-- [Integrating OpenTelemetry \& Security in eShop](#integrating-opentelemetry--security-in-eshop)
-  - [](#)
-  - [Table of Contents](#table-of-contents)
   - [User flow](#user-flow)
   - [Changes](#changes)
   - [How to run](#how-to-run)
@@ -31,3 +27,7 @@ First, ensure that the `.NET SDK` version you are using matches the version used
 
 
 ## How to run
+
+## Dashboards
+![OrderingAPI](report/ordering-api.png)
+![BasketAPI](report/basket-api.png)
