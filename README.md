@@ -1,142 +1,91 @@
-# eShop Reference Application - "AdventureWorks"
+# Integrating OpenTelemetry & Security in eShop
 
-A reference .NET application implementing an e-commerce website using a services-based architecture using [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/).
+_Assignment 02.02_
 
-![eShop Reference Application architecture diagram](img/eshop_architecture.png)
+![alt text](report/image.png)
+---
 
-![eShop homepage screenshot](img/eshop_homepage.png)
+## Table of Contents
+- [Integrating OpenTelemetry \& Security in eShop]
+  - [User flow](#user-flow)
+  - [Changes](#changes)
+  - [How to run](#how-to-run)
+    - [Prerequesits](#prerequesits)
+    - [Steps](#steps)
+  - [Dashboards](#dashboards)
 
-## Getting Started
+---
 
-This version of eShop is based on .NET 9. 
+## User flow
 
-Previous eShop versions:
-* [.NET 8](https://github.com/dotnet/eShop/tree/release/8.0)
+The flow I'm focusing for the purpose of this assignment is **place an order from cart**, which will affect the following **microservices**:
+![spans](report/spans.png)
 
-### Prerequisites
+The workflow is as follows:
+- Place items in your cart
+- Go to cart
+- Click on `Checkout`
+- See checkout page
+- Click on `Place Order`
+- See the order placed under orders page
 
-- Clone the eShop repository: https://github.com/dotnet/eshop
-- [Install & start Docker Desktop](https://docs.docker.com/engine/install/)
+## Changes
 
-#### Windows with Visual Studio
-- Install [Visual Studio 2022 version 17.10 or newer](https://visualstudio.microsoft.com/vs/).
-  - Select the following workloads:
-    - `ASP.NET and web development` workload.
-    - `.NET Aspire SDK` component in `Individual components`.
-    - Optional: `.NET Multi-platform App UI development` to run client apps
+In order to run the project with the changes I made, we first need to keep in mind 2 things: 
+- I'm running the eShop solution on **Linux** (Fedora 41)
+- I implemented the `observability tools` using **docker**
 
-Or
+First, ensure that the `.NET SDK` version you are using matches the version used in the eShop project. In order to run on Fedora, I had to change the `sdk.version` on `globals.js` from `9.0.200` to `9.0.103` and trust the certificates as described [here](https://aka.ms/aspnet/https-trust-dev-cert).
 
-- Run the following commands in a Powershell & Terminal running as `Administrator` to automatically configure your environment with the required tools to build and run this application. (Note: A restart is required and included in the script below.)
+Second, make sure you have Docker installed so you can run the observability tools. Make sure you have the `docker-compose.yml` file in your directory and the `obervability` directory with the config files.
 
-```powershell
-install-Module -Name Microsoft.WinGet.Configuration -AllowPrerelease -AcceptLicense -Force
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-get-WinGetConfiguration -file .\.configurations\vside.dsc.yaml | Invoke-WinGetConfiguration -AcceptConfigurationAgreements
+## Diagram
+My solution uses the following architecture:
+![architecture](report/architecture.png)
+
+## How to run
+### Prerequesits
+- [.NET SDK 9.0](https://dot.net/download?cid=eshop)
+- [Docker](https://dot.net/download?cid=eshop)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Steps
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Dan1m4D/AS-Assignment-1.git
 ```
-
-Or
-
-- From Dev Home go to `Machine Configuration -> Clone repositories`. Enter the URL for this repository. In the confirmation screen look for the section `Configuration File Detected` and click `Run File`.
-
-#### Mac, Linux, & Windows without Visual Studio
-- Install the latest [.NET 9 SDK](https://dot.net/download?cid=eshop)
-
-Or
-
-- Run the following commands in a Powershell & Terminal running as `Administrator` to automatically configuration your environment with the required tools to build and run this application. (Note: A restart is required after running the script below.)
-
-##### Install Visual Studio Code and related extensions
-```powershell
-install-Module -Name Microsoft.WinGet.Configuration -AllowPrerelease -AcceptLicense  -Force
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-get-WinGetConfiguration -file .\.configurations\vscode.dsc.yaml | Invoke-WinGetConfiguration -AcceptConfigurationAgreements
+2. On a separate terminal, run the docker compose:
+```bash
+docker compose up --build
 ```
-
-> Note: These commands may require `sudo`
-
-- Optional: Install [Visual Studio Code with C# Dev Kit](https://code.visualstudio.com/docs/csharp/get-started)
-- Optional: Install [.NET MAUI Workload](https://learn.microsoft.com/dotnet/maui/get-started/installation?tabs=visual-studio-code)
-
-> Note: When running on Mac with Apple Silicon (M series processor), Rosetta 2 for grpc-tools. 
-
-### Running the solution
-
-> [!WARNING]
-> Remember to ensure that Docker is started
-
-* (Windows only) Run the application from Visual Studio:
- - Open the `eShop.Web.slnf` file in Visual Studio
- - Ensure that `eShop.AppHost.csproj` is your startup project
- - Hit Ctrl-F5 to launch Aspire
-
-* Or run the application from your terminal:
-```powershell
+3. Run the eSHop:
+```bash
 dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj
 ```
-then look for lines like this in the console output in order to find the URL to open the Aspire dashboard:
-```sh
-Login to the dashboard at: http://localhost:19888/login?t=uniquelogincodeforyou
+4. On the terminal, you'll recieve a link to the ASPIRE dashboard:
+```bash
+  Login to the dashboard at https://localhost:19888/login?={some unique code}
 ```
+5. Follow the link to see the microservices running and interact with them:
+   ![eshop dashboard](report/eshop.png)
+6. On [http://localhost:16686](http://localhost:16686) you can find the Jaeger UI
+   ![jaeger](report/jaeger_ui.png)
+7. On [http://localhost:9090](http://localhost:9090) you can find the Prometheus UI
+   ![prometheus](report/prometheus-ui.png)
+8. ON [http://localhost:3000](http://localhost:3000) you can find the Grafana UI
+   ![grafana](report/grafana_ui.png)
+9.  Start using the app, mainly the use case I chose.
+10. On Jaeger you can see the traces starting to come:
+    ![traces](report/UpdateBasket.png)
+11. On Prometheus, clicking in exploring metrics, you can see the metrics collected by the `otel-collector`:
+    ![metrics](report/metrics_prometheus.png)
+12. Inside Grafana, you can import the dashboards stored [here](observability/grafana/dashboards/) and see the metrics flowing.
+    
+## Dashboards
+Here you can see the dashboards I made:
+![basket](report/basket_dashboard.png)
+![ordering](report/ordering_dashboard.png)
 
-> You may need to install ASP.NET Core HTTPS development certificates first, and then close all browser tabs. Learn more at https://aka.ms/aspnet/https-trust-dev-cert
-
-### Azure Open AI
-
-When using Azure OpenAI, inside *eShop.AppHost/appsettings.json*, add the following section:
-
-```json
-  "ConnectionStrings": {
-    "OpenAi": "Endpoint=xxx;Key=xxx;"
-  }
-```
-
-Replace the values with your own. Then, in the eShop.AppHost *Program.cs*, set this value to **true**
-
-```csharp
-bool useOpenAI = false;
-```
-
-Here's additional guidance on the [.NET Aspire OpenAI component](https://learn.microsoft.com/dotnet/aspire/azureai/azureai-openai-component?tabs=dotnet-cli). 
-
-### Use Azure Developer CLI
-
-You can use the [Azure Developer CLI](https://aka.ms/azd) to run this project on Azure with only a few commands. Follow the next instructions:
-
-- Install the latest or update to the latest [Azure Developer CLI (azd)](https://aka.ms/azure-dev/install).
-- Log in `azd` (if you haven't done it before) to your Azure account:
-```sh
-azd auth login
-```
-- Initialize `azd` from the root of the repo.
-```sh
-azd init
-```
-- During init:
-  - Select `Use code in the current directory`. Azd will automatically detect the .NET Aspire project.
-  - Confirm `.NET (Aspire)` and continue.
-  - Select which services to expose to the Internet (exposing `webapp` is enough to test the sample).
-  - Finalize the initialization by giving a name to your environment.
-
-- Create Azure resources and deploy the sample by running:
-```sh
-azd up
-```
-Notes:
-  - The operation takes a few minutes the first time it is ever run for an environment.
-  - At the end of the process, `azd` will display the `url` for the webapp. Follow that link to test the sample.
-  - You can run `azd up` after saving changes to the sample to re-deploy and update the sample.
-  - Report any issues to [azure-dev](https://github.com/Azure/azure-dev/issues) repo.
-  - [FAQ and troubleshoot](https://learn.microsoft.com/azure/developer/azure-developer-cli/troubleshoot?tabs=Browser) for azd.
-
-## Contributing
-
-For more information on contributing to this repo, read [the contribution documentation](./CONTRIBUTING.md) and [the Code of Conduct](CODE-OF-CONDUCT.md).
-
-### Sample data
-
-The sample catalog data is defined in [catalog.json](https://github.com/dotnet/eShop/blob/main/src/Catalog.API/Setup/catalog.json). Those product names, descriptions, and brand names are fictional and were generated using [GPT-35-Turbo](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/chatgpt), and the corresponding [product images](https://github.com/dotnet/eShop/tree/main/src/Catalog.API/Pics) were generated using [DALL·E 3](https://openai.com/dall-e-3).
-
-## eShop on Azure
-
-For a version of this app configured for deployment on Azure, please view [the eShop on Azure](https://github.com/Azure-Samples/eShopOnAzure) repo.
+## Docs
+You can find the [report](/docs/AS_1st_Assignment_Report_107603.pdf) here and the [assignment sheet](docs/02.02%20-%20Integrating%20OpenTelemetry%20&%20Security%20in%20eShop.pdf) under `/docs`
